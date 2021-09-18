@@ -1,5 +1,6 @@
 package com.byblos.ticketapi.controller;
 
+import com.byblos.ticketapi.mail.InboxReaderPOP3;
 import com.byblos.ticketapi.model.Ticket;
 import com.byblos.ticketapi.repository.TicketRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,7 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.mail.Message;
+import javax.mail.MessagingException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +22,34 @@ public class TicketController {
 
     @Autowired
     TicketRepository ticketRepository;
+
+    @Autowired
+    InboxReaderPOP3 inboxReaderPOP3;
+
+    @GetMapping("/read")
+    public ResponseEntity<Object> retrieveMessages() throws Exception {
+        Message[] messages = inboxReaderPOP3.read();
+        List<Ticket> tickets = new ArrayList<Ticket>();
+        System.out.println(messages.length);
+
+        for (Message message : messages) {
+            try {
+                Ticket _ticket = ticketRepository
+                        .save(new Ticket(message.getSubject(), new Date(), "", "",
+                                "", "", ""));
+                tickets.add(_ticket);
+
+            } catch (Exception e) {
+                return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+
+        return new ResponseEntity<>( tickets, HttpStatus.CREATED);
+
+
+
+    }
 
     @GetMapping("/tickets")
     public ResponseEntity<List<Ticket>> getAllTutorials(@RequestParam(required = false) String objet) {
